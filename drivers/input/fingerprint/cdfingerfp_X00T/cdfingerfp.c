@@ -551,6 +551,18 @@ static struct miscdevice st_cdfinger_dev = {
 	.fops = &cdfinger_fops,
 };
 
+static void set_fingerprintd_nice(int nice)
+{
+	struct task_struct *p;
+
+	read_lock(&tasklist_lock);
+	for_each_process(p) {
+		if (strstr(p->comm, "erprint"))
+			set_user_nice(p, nice);
+	}
+	read_unlock(&tasklist_lock);
+}
+
 static int cdfinger_fb_notifier_callback(struct notifier_block* self,
                                         unsigned long event, void* data)
 {
@@ -564,6 +576,7 @@ static int cdfinger_fb_notifier_callback(struct notifier_block* self,
     blank = *(int*)evdata->data;
     switch (blank) {
         case FB_BLANK_UNBLANK:
+		set_fingerprintd_nice(0);
 		mutex_lock(&g_cdfingerfp_data->buf_lock);
 		screen_status = 1;
 		if (isInKeyMode == 0)
@@ -571,6 +584,7 @@ static int cdfinger_fb_notifier_callback(struct notifier_block* self,
 		mutex_unlock(&g_cdfingerfp_data->buf_lock);
             break;
         case FB_BLANK_POWERDOWN:
+		set_fingerprintd_nice(MIN_NICE);
 		mutex_lock(&g_cdfingerfp_data->buf_lock);
 		screen_status = 0;
 		if (isInKeyMode == 0)
