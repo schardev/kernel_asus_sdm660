@@ -1242,6 +1242,7 @@ static int ep_create_wakeup_source(struct epitem *epi)
 
 	get_task_comm(task_comm_buf, current);
 
+	name = epi->ffd.file->f_path.dentry->d_name.name;
 	if (!epi->ep->ws) {
 		snprintf(buf, sizeof(buf), "epoll_%.*s_epollfd",
 			 (int)sizeof(task_comm_buf), task_comm_buf);
