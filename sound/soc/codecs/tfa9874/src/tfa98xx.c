@@ -804,7 +804,7 @@ static ssize_t tfa98xx_dbgfs_rpc_send(struct file *file,
 	/* huaqin add for ZQL1820p1-24 by xudayi at 2018/10/31 end */
 
 	if (err) {
-		pr_err("[0x%x] dsp_msg error: %d\n", i2c->addr, err);
+		pr_err("[0x%x] send_tfa_cal_apr error: %d\n", i2c->addr, err);
 	}
 
 	mdelay(2);
