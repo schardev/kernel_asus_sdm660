@@ -30,3 +30,7 @@
 
 	/delete-node/ hbtb;
 };
+
+&smb138x {
+	status = "disabled";
+};
