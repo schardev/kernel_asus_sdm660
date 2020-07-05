@@ -18,6 +18,16 @@
 #include "msm_cci.h"
 #include "msm_camera_dt_util.h"
 
+#if defined(CONFIG_MACH_ASUS_X00T) && defined(CAM_MODULE_INFO_CONFIG)
+#undef CAM_MODULE_INFO_CONFIG
+#define CAM_MODULE_INFO_CONFIG 1
+#include <linux/proc_fs.h>
+#include <linux/kernel.h>
+#include <linux/string.h>
+#include <linux/uaccess.h>
+#include <linux/slab.h>
+#endif
+
 /* Logging macro */
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
@@ -77,6 +87,43 @@ static struct v4l2_subdev_info msm_sensor_driver_subdev_info[] = {
 		.order = 0,
 	},
 };
+
+#if defined(CONFIG_MACH_ASUS_X00T) && defined(CAM_MODULE_INFO_CONFIG)
+static char *cameraModuleInfo[3] = {NULL, NULL, NULL};
+
+#define CAM_MODULE_INFO "cameraModuleInfo"
+
+static struct proc_dir_entry *proc_entry;
+
+static ssize_t cameraModuleInfo_read
+	(struct file *file, char __user *page, size_t size, loff_t *ppos)
+{
+	char buf[150] = {0};
+	int rc = 0;
+	snprintf(buf, 150,
+			"rear camera:%s\nfront camera:%s\nrear sub camera:%s\n",
+			cameraModuleInfo[0],
+			cameraModuleInfo[1],
+			cameraModuleInfo[2]);
+
+	rc = simple_read_from_buffer(page, size, ppos, buf, strlen(buf));
+
+	return rc;
+}
+
+static ssize_t cameraModuleInfo_write
+	(struct file *filp, const char __user *buffer,
+	size_t count, loff_t *off)
+{
+	return 0;
+}
+
+static const struct file_operations cameraModuleInfo_fops = {
+	.owner = THIS_MODULE,
+	.read = cameraModuleInfo_read,
+	.write = cameraModuleInfo_write,
+};
+#endif /* CONFIG_MACH_ASUS_X00T && CAM_MODULE_INFO_CONFIG */
 
 static int32_t msm_sensor_driver_create_i2c_v4l_subdev
 			(struct msm_sensor_ctrl_t *s_ctrl)
@@ -1050,6 +1097,10 @@ CSID_TG:
 	s_ctrl->bypass_video_node_creation =
 		slave_info->bypass_video_node_creation;
 
+#if defined(CONFIG_MACH_ASUS_X00T) && defined(CAM_MODULE_INFO_CONFIG)
+	cameraModuleInfo[slave_info->camera_id] = slave_info->sensor_name;
+#endif
+
 	/*
 	 * Create /dev/videoX node, comment for now until dummy /dev/videoX
 	 * node is created and used by HAL
@@ -1482,6 +1533,17 @@ static int __init msm_sensor_driver_init(void)
 	if (rc)
 		pr_err("%s i2c_add_driver failed rc = %d",  __func__, rc);
 
+#if defined(CONFIG_MACH_ASUS_X00T) && defined(CAM_MODULE_INFO_CONFIG)
+	proc_entry = proc_create(CAM_MODULE_INFO,
+							0664, NULL,
+							&cameraModuleInfo_fops);
+
+	if (NULL == proc_entry) {
+		pr_err("Create proc/cameraModuleInfo failed\n");
+		remove_proc_entry(CAM_MODULE_INFO, NULL);
+	}
+#endif
+
 	return rc;
 }
 
@@ -1490,6 +1552,9 @@ static void __exit msm_sensor_driver_exit(void)
 	CDBG("Enter");
 	platform_driver_unregister(&msm_sensor_platform_driver);
 	i2c_del_driver(&msm_sensor_driver_i2c);
+#if defined(CONFIG_MACH_ASUS_X00T) && defined(CAM_MODULE_INFO_CONFIG)
+	remove_proc_entry(CAM_MODULE_INFO, NULL);
+#endif
 	return;
 }
 
